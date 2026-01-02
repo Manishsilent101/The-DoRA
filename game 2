@@ -1,0 +1,152 @@
+import tkinter as tk
+import random
+
+root = tk.Tk()
+root.title("Doraemon Cartoon Build Game")
+root.geometry("900x500")
+
+canvas = tk.Canvas(root, width=900, height=450, bg="skyblue")
+canvas.pack()
+
+# ---------------- GLOBAL STATE ----------------
+characters = ["Doraemon", "Nobita", "Shizuka", "Suniyo"]
+current_character = 0
+reload_chances = 2
+current_part = 0
+game_over = False
+
+# ---------------- UI TEXT ----------------
+status = canvas.create_text(
+    450, 30,
+    text="Build Doraemon",
+    font=("Arial", 18, "bold")
+)
+
+chance_text = canvas.create_text(
+    750, 30,
+    text="Reloads: 2",
+    font=("Arial", 14, "bold")
+)
+
+# ---------------- CHARACTER PARTS ----------------
+def create_character(name):
+    canvas.delete("char")
+
+    parts = []
+
+    # FACE
+    parts.append(canvas.create_oval(90, 140, 160, 210,
+                 fill="deepskyblue" if name == "Doraemon" else "#ffddb3",
+                 outline="black", tags="char"))
+
+    # BODY
+    parts.append(canvas.create_oval(100, 210, 150, 290,
+                 fill="blue" if name == "Doraemon" else "orange",
+                 state="hidden", tags="char"))
+
+    # HANDS
+    parts.append(canvas.create_oval(60, 220, 100, 260,
+                 fill="blue", state="hidden", tags="char"))
+    parts.append(canvas.create_oval(150, 220, 190, 260,
+                 fill="blue", state="hidden", tags="char"))
+
+    # LEGS
+    parts.append(canvas.create_oval(105, 290, 125, 340,
+                 fill="blue", state="hidden", tags="char"))
+    parts.append(canvas.create_oval(125, 290, 145, 340,
+                 fill="blue", state="hidden", tags="char"))
+
+    return parts
+
+parts = create_character(characters[current_character])
+
+# ---------------- COIN ----------------
+coin = canvas.create_oval(900, 200, 930, 230, fill="gold", outline="orange")
+
+# ---------------- CONTROLS ----------------
+def move_up(event):
+    if not game_over:
+        canvas.move("char", 0, -20)
+
+def move_down(event):
+    if not game_over:
+        canvas.move("char", 0, 20)
+
+root.bind("<Up>", move_up)
+root.bind("<Down>", move_down)
+
+# ---------------- RELOAD BUTTON ----------------
+def reload_game():
+    global reload_chances, game_over, current_part, parts
+
+    if reload_chances > 0:
+        reload_chances -= 1
+        canvas.itemconfig(chance_text, text=f"Reloads: {reload_chances}")
+        game_over = False
+        current_part = 0
+
+        for p in parts[1:]:
+            canvas.itemconfig(p, state="hidden")
+
+        canvas.coords(coin, 900, random.randint(120, 320), 930, random.randint(150, 350))
+        game_loop()
+
+reload_btn = tk.Button(
+    root, text="Reload",
+    font=("Arial", 12, "bold"),
+    command=reload_game
+)
+reload_btn.pack(pady=5)
+
+# ---------------- GAME LOOP ----------------
+def game_loop():
+    global current_part, game_over, current_character, parts, reload_chances
+
+    if game_over:
+        return
+
+    canvas.move(coin, -10, 0)
+
+    # Missed coin
+    if canvas.coords(coin)[2] < 0:
+        game_over = True
+        canvas.itemconfig(status, text="OUT! Use Reload", fill="red")
+
+        if reload_chances == 0:
+            current_character = 0
+            reload_chances = 2
+            canvas.itemconfig(chance_text, text="Reloads: 2")
+            canvas.itemconfig(status, text="Restarting from Doraemon", fill="black")
+            parts = create_character(characters[current_character])
+
+        return
+
+    fx1, fy1, fx2, fy2 = canvas.coords(parts[0])
+    cx1, cy1, cx2, cy2 = canvas.coords(coin)
+
+    # Collision
+    if fx2 > cx1 and fx1 < cx2 and fy2 > cy1 and fy1 < cy2:
+        if current_part < len(parts) - 1:
+            current_part += 1
+            canvas.itemconfig(parts[current_part], state="normal")
+
+        else:
+            current_character += 1
+            current_part = 0
+
+            if current_character == len(characters):
+                canvas.itemconfig(status, text="🎉❤️👻 ALL CHARACTERS COMPLETED!", fill="green")      
+                game_over = True
+                return
+
+            parts = create_character(characters[current_character])
+            canvas.itemconfig(status, text=f"Build {characters[current_character]}", fill="black")
+
+        canvas.coords(coin, 900, random.randint(120, 320), 930, random.randint(150, 350))
+
+    root.after(50, game_loop)
+
+game_loop()
+root.mainloop()
+
+
